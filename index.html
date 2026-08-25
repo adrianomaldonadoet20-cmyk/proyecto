@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mozo — Reservá, pedí y sentate a comer</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .hero-top {
+    padding: 48px 24px 32px;
+    text-align: center;
+  }
+  .hero-top .eyebrow { color: var(--coral-dark); }
+  .hero-top h1 {
+    font-size: clamp(2.6rem, 7vw, 4.4rem);
+    color: var(--navy);
+    margin: 10px 0 14px;
+    letter-spacing: -0.01em;
+  }
+  .hero-top h1 span { color: var(--coral); }
+  .hero-top p {
+    max-width: 480px;
+    margin: 0 auto;
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+  }
+  .role-split {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 480px;
+  }
+  .role-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 60px 48px;
+    overflow: hidden;
+    transition: flex 0.35s ease;
+  }
+  .role-panel.client { background: var(--coral); color: var(--white); }
+  .role-panel.admin { background: var(--navy); color: var(--white); }
+  .role-panel::after {
+    content: '';
+    position: absolute;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    right: -100px; bottom: -120px;
+  }
+  .role-panel .role-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.85;
+    margin-bottom: 10px;
+  }
+  .role-panel h2 {
+    font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+    margin-bottom: 14px;
+  }
+  .role-panel p {
+    max-width: 340px;
+    opacity: 0.92;
+    margin-bottom: 28px;
+    font-size: 0.98rem;
+  }
+  .role-panel .role-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    align-self: flex-start;
+    background: var(--white);
+    padding: 13px 26px;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    position: relative;
+    z-index: 2;
+  }
+  .role-panel.client .role-cta { color: var(--coral-dark); }
+  .role-panel.admin .role-cta { color: var(--navy); }
+  .role-panel .role-cta:hover { transform: translateX(3px); }
+  .role-panel ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    z-index: 2;
+  }
+  .role-panel li {
+    font-size: 0.88rem;
+    opacity: 0.92;
+    padding-left: 18px;
+    position: relative;
+  }
+  .role-panel li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 7px;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .foot-note {
+    text-align: center;
+    padding: 22px;
+    color: var(--ink-soft);
+    font-size: 0.82rem;
+  }
+
+  @media (max-width: 780px) {
+    .role-split { grid-template-columns: 1fr; }
+    .role-panel { padding: 44px 28px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-top">
+    <div class="eyebrow">GUÍA · RESERVAS · PEDIDO ANTICIPADO</div>
+    <h1>Mozo<span>.</span></h1>
+    <p>Reservá tu mesa, pedí tu comida y llegá directo a sentarte. O retirá tu pedido para llevar, ya listo.</p>
+  </div>
+
+  <div class="role-split">
+    <a href="cliente.html" class="role-panel client">
+      <div class="role-eyebrow">Portal · 01</div>
+      <h2>Soy cliente</h2>
+      <ul>
+        <li>Explorar locales recomendados</li>
+        <li>Reservar mesa o pedir para llevar</li>
+        <li>Ver el estado del pedido en vivo</li>
+      </ul>
+      <span class="role-cta">Entrar como cliente →</span>
+    </a>
+
+    <a href="admin.html" class="role-panel admin">
+      <div class="role-eyebrow">Portal · 02</div>
+      <h2>Soy un local</h2>
+      <ul>
+        <li>Ver comandas entrantes en tiempo real</li>
+        <li>Gestionar mesas y horarios</li>
+        <li>Marcar pedidos en preparación / listos</li>
+      </ul>
+      <span class="role-cta">Entrar como admin →</span>
+    </a>
+  </div>
+
+  <div class="foot-note">Prototipo de interfaz — Laboratorio de Desarrollo de Sistemas de Información</div>
+</div>
+
+</body>
+</html>
