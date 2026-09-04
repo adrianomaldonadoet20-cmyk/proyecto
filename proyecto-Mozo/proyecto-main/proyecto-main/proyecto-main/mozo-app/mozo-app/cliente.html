@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mozo — Portal Cliente</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  .page-hero {
+    background: var(--navy);
+    color: var(--white);
+    padding: 40px 0 56px;
+  }
+  .page-hero .eyebrow { color: var(--gold); }
+  .page-hero h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 8px 0 8px; }
+  .page-hero p { color: #C7CFEF; max-width: 460px; }
+  .search-bar {
+    margin-top: 26px;
+    background: var(--white);
+    border-radius: 999px;
+    padding: 6px;
+    display: flex;
+    gap: 6px;
+    max-width: 520px;
+    box-shadow: var(--shadow-md);
+  }
+  .search-bar input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 16px;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+  }
+  .search-bar input:focus { outline: none; }
+
+  .location-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.14);
+    border: 1.5px solid rgba(255,255,255,0.35);
+    color: var(--white);
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 20px;
+  }
+  .location-chip:hover { background: rgba(255,255,255,0.22); }
+  .location-chip .location-caret { opacity: 0.7; font-size: 0.75rem; margin-left: 2px; }
+
+  .location-help {
+    margin-top: 7px;
+    color: var(--ink-soft);
+    font-size: 0.75rem;
+  }
+  .location-selected {
+    margin-top: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--cream);
+    border: 1px solid var(--line);
+    color: var(--ink-soft);
+    font-size: 0.78rem;
+  }
+  .location-selected.is-set {
+    color: var(--navy);
+    font-weight: 600;
+  }
+
+  .location-suggestions {
+    max-height: 190px;
+    overflow-y: auto;
+    margin-bottom: 14px;
+  }
+  .location-suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    cursor: pointer;
+  }
+  .location-suggestion-item:hover, .location-suggestion-item.active { background: var(--cream); }
+  .location-suggestion-item .pin { font-size: 1rem; }
+  .location-suggestion-item .loc-name { font-weight: 600; color: var(--ink); }
+  .location-suggestion-item .loc-detail { color: var(--ink-soft); font-size: 0.78rem; }
+  .location-map {
+    height: 200px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1.5px solid var(--line);
+    background: var(--cream);
+  }
+  .field-error {
+    display: none;
+    color: var(--coral-dark);
+    font-size: 0.78rem;
+    margin: -10px 0 14px;
+  }
+
+  .filters {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: -28px 0 30px;
+  }
+  .filter-chip {
+    background: var(--white);
+    border: 1.5px solid var(--line);
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+  }
+  .filter-chip.active, .filter-chip:hover { border-color: var(--coral); color: var(--coral-dark); background: #FFF1F1; }
+
+  .section-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .section-title h2 { font-size: 1.5rem; color: var(--navy); }
+  .section-title span { color: var(--ink-soft); font-size: 0.85rem; }
+
+  .place-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    margin-bottom: 50px;
+  }
+  .place-card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .place-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+  .place-media {
+    height: 130px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem;
+  }
+  .place-body { padding: 18px 20px 20px; flex: 1; display: flex; flex-direction: column; }
+  .place-cuisine { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--coral-dark); margin-bottom: 6px; }
+  .place-body h3 { font-size: 1.15rem; color: var(--navy); margin-bottom: 6px; }
+  .place-tip { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 16px; flex: 1; }
+  .place-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: 0.8rem; color: var(--ink-soft); }
+  .place-actions { display: flex; gap: 8px; }
+  .place-actions .btn { flex: 1; }
+
+  .order-status-strip {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    padding: 20px 24px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 50px;
+  }
+  .order-status-strip h3 { font-size: 1.05rem; color: var(--navy); margin-bottom: 14px; }
+  .status-track { display: flex; align-items: center; gap: 0; }
+  .status-step { flex: 1; text-align: center; position: relative; }
+  .status-step .dot {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--line); color: var(--ink-soft);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px; font-weight: 700; font-size: 0.8rem;
+    transition: all 0.2s ease;
+  }
+  .status-step.done .dot { background: var(--success); color: var(--white); }
+  .status-step.active .dot { background: var(--coral); color: var(--white); }
+  .status-step p { font-size: 0.78rem; color: var(--ink-soft); }
+  .status-step::before {
+    content: '';
+    position: absolute;
+    top: 15px; left: -50%; width: 100%; height: 2px;
+    background: var(--line); z-index: -1;
+  }
+  .status-step:first-child::before { display: none; }
+  .status-step.done::before { background: var(--success); }
+
+  /* Menu picker inside modal */
+  .menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item-name { font-size: 0.92rem; font-weight: 500; }
+  .menu-item-price { font-size: 0.82rem; color: var(--ink-soft); }
+  .qty-control { display: flex; align-items: center; gap: 10px; }
+  .qty-control button {
+    width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--line);
+    background: var(--white); font-weight: 700; color: var(--navy);
+  }
+  .qty-control span { min-width: 14px; text-align: center; font-weight: 600; }
+
+  .modal-total {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; font-weight: 700; color: var(--navy); font-size: 1.05rem;
+  }
+
+  @media (max-width: 900px) {
+    .place-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 620px) {
+    .place-grid { grid-template-columns: 1fr; }
+    .status-track { flex-wrap: wrap; row-gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <a href="index.html" class="brand">Mozo<span class="dot">.</span></a>
+    <div class="nav-right">
+      <span class="role-badge cliente">Cliente</span>
+      <a href="admin.html" class="switch-role">Ver portal admin</a>
+    </div>
+  </div>
+</nav>
+
+<header class="page-hero">
+  <div class="container">
+    <div class="eyebrow">HOLA, BUENAS TARDES</div>
+    <h1>¿Dónde comemos hoy?</h1>
+    <p>Locales recomendados cerca tuyo. Reservá tu mesa o pedí para llevar, todo desde acá.</p>
+    <button type="button" class="location-chip" id="locationBtn">
+      <span>📍</span>
+      <span id="locationLabel">Elegí tu ubicación de entrega</span>
+      <span class="location-caret">▾</span>
+    </button>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Buscar por local o tipo de cocina...">
+      <button class="btn btn-coral" id="searchBtn">Buscar</button>
+    </div>
+  </div>
+</header>
+
+<main class="container" style="padding-top: 40px;">
+
+  <div class="filters">
+    <button class="filter-chip active">Todos</button>
+    <button class="filter-chip">Cerca mío</button>
+    <button class="filter-chip">Para comer ahí</button>
+    <button class="filter-chip">Para llevar</button>
+    <button class="filter-chip">Mejor puntuados</button>
+  </div>
+
+  <div class="order-status-strip">
+    <h3>Tu último pedido — La Parrilla del Barrio</h3>
+    <div class="status-track">
+      <div class="status-step done"><div class="dot">✓</div><p>Confirmado</p></div>
+      <div class="status-step active"><div class="dot">2</div><p>En preparación</p></div>
+      <div class="status-step"><div class="dot">3</div><p>Listo</p></div>
+      <div class="status-step"><div class="dot">4</div><p>Entregado</p></div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>Recomendados para vos</h2>
+    <span id="place-count">5 locales</span>
+  </div>
+
+  <div class="place-grid" id="place-grid"></div>
+</main>
+
+<!-- Modal: reservar / pedir -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="eyebrow" style="color: var(--coral-dark);">NUEVO PEDIDO</div>
+    <h3 id="modalPlaceName" style="color: var(--navy); font-size: 1.4rem; margin: 6px 0 20px;">Local</h3>
+
+    <div class="field">
+      <label>Modalidad</label>
+      <div class="toggle-group" id="modalityToggle">
+        <button type="button" class="active" data-mode="dine">Comer en el local</button>
+        <button type="button" data-mode="takeout">Para llevar</button>
+      </div>
+    </div>
+
+    <div class="field" id="dateTimeField">
+      <label id="dateTimeLabel">Horario de llegada</label>
+      <input type="time" id="timeInput" value="21:00">
+    </div>
+
+    <div class="field" id="guestsField">
+      <label>Personas</label>
+      <select id="guestsInput">
+        <option>1 persona</option>
+        <option selected>2 personas</option>
+        <option>3 personas</option>
+        <option>4 personas</option>
+        <option>5+ personas</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Elegí qué vas a comer (opcional, podés pedir al llegar)</label>
+      <div id="menuList"></div>
+    </div>
+
+    <div class="ticket-tear"></div>
+    <div class="modal-total">
+      <span>Total estimado</span>
+      <span id="modalTotal">$0</span>
+    </div>
+
+    <button class="btn btn-coral btn-block" id="confirmOrder">Confirmar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">Pedido confirmado ✓</div>
+
+<!-- Modal: elegir entre iniciar sesión o registrarse -->
+<div class="modal-overlay" id="authGateModal">
+  <div class="modal" style="max-width: 400px; text-align: center;">
+    <div class="eyebrow" style="color: var(--coral-dark);">BIENVENIDO A MOZO</div>
+    <h3 style="color: var(--navy); font-size: 1.5rem; margin: 8px 0 10px;">¿Cómo querés entrar?</h3>
+    <p style="color: var(--ink-soft); font-size: 0.9rem; margin-bottom: 26px;">Iniciá sesión o creá tu cuenta para reservar y pedir.</p>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <button class="btn btn-navy btn-block" id="showLoginBtn">Iniciar sesión</button>
+      <button class="btn btn-coral btn-block" id="showRegisterBtn">Registrarme</button>
+    </div>
+    <a href="#" id="skipAuthBtn" style="display: inline-block; margin-top: 20px; font-size: 0.8rem; color: var(--ink-soft); border-bottom: 1px dashed var(--ink-soft);">Explorar sin iniciar sesión</a>
+  </div>
+</div>
+
+<!-- Modal: iniciar sesión -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal" style="max-width: 400px;">
+    <button class="modal-close" id="loginModalClose">✕</button>
+    <div class="eyebrow" style="color: var(--navy);">INICIAR SESIÓN</div>
+    <h3 style="color: var(--navy); font-size: 1.3rem; margin: 6px 0 20px;">Ingresá a tu cuenta</h3>
+
+    <div class="field">
+      <label for="loginNameInput">Nombre</label>
+      <input type="text" id="loginNameInput" placeholder="Tu nombre" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="loginDniInput">DNI</label>
+      <input type="text" id="loginDniInput" placeholder="Sin puntos" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="loginPasswordInput">Contraseña</label>
+      <input type="password" id="loginPasswordInput" placeholder="••••••" autocomplete="off">
+    </div>
+    <p class="field-error" id="loginError">Completá todos los campos.</p>
+
+    <button class="btn btn-navy btn-block" id="loginSubmitBtn">Ingresar</button>
+
+    <div style="text-align: center; margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+      <a href="#" id="forgotPasswordBtn" style="font-size: 0.82rem; color: var(--ink-soft); border-bottom: 1px dashed var(--ink-soft); align-self: center;">¿Olvidaste tu contraseña?</a>
+      <a href="#" id="goToRegisterBtn" style="font-size: 0.82rem; color: var(--coral-dark); align-self: center;">¿No tenés cuenta? Registrate</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: registrarme -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal" style="max-width: 400px;">
+    <button class="modal-close" id="registerModalClose">✕</button>
+    <div class="eyebrow" style="color: var(--coral-dark);">CREAR CUENTA</div>
+    <h3 style="color: var(--navy); font-size: 1.3rem; margin: 6px 0 20px;">Registrate en Mozo</h3>
+
+    <div class="field">
+      <label for="registerEmailInput">Correo de Gmail</label>
+      <input type="email" id="registerEmailInput" placeholder="tuusuario@gmail.com" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="registerNameInput">Nombre</label>
+      <input type="text" id="registerNameInput" placeholder="Tu nombre" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="registerDniInput">DNI</label>
+      <input type="text" id="registerDniInput" placeholder="Sin puntos" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="registerPasswordInput">Contraseña</label>
+      <input type="password" id="registerPasswordInput" placeholder="••••••" autocomplete="off">
+    </div>
+    <p class="field-error" id="registerError">Revisá los datos ingresados.</p>
+
+    <button class="btn btn-coral btn-block" id="registerSubmitBtn">Crear cuenta</button>
+
+    <div style="text-align: center; margin-top: 16px;">
+      <a href="#" id="goToLoginBtn" style="font-size: 0.82rem; color: var(--navy); border-bottom: 1px dashed var(--navy);">¿Ya tenés cuenta? Iniciá sesión</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: olvidé mi contraseña -->
+<div class="modal-overlay" id="forgotPasswordModal">
+  <div class="modal" style="max-width: 380px;">
+    <button class="modal-close" id="forgotModalClose">✕</button>
+    <div class="eyebrow" style="color: var(--navy);">RECUPERAR CONTRASEÑA</div>
+    <h3 style="color: var(--navy); font-size: 1.25rem; margin: 6px 0 18px;">Te enviamos un código</h3>
+    <div class="field">
+      <label for="forgotEmailInput">Mail con el que te registraste</label>
+      <input type="email" id="forgotEmailInput" placeholder="tuusuario@gmail.com" autocomplete="off">
+    </div>
+    <p class="field-error" id="forgotError">Ingresá un mail válido.</p>
+    <button class="btn btn-navy btn-block" id="forgotSubmitBtn">Enviar código</button>
+  </div>
+</div>
+
+<!-- Modal: ubicación de entrega -->
+<div class="modal-overlay" id="locationModal">
+  <div class="modal" style="max-width: 480px;">
+    <button class="modal-close" id="locationModalClose">✕</button>
+    <div class="eyebrow" style="color: var(--coral-dark);">UBICACIÓN DE ENTREGA</div>
+    <h3 style="color: var(--navy); font-size: 1.3rem; margin: 6px 0 18px;">¿Dónde te encontrás?</h3>
+
+    <div class="field" style="margin-bottom: 10px;">
+      <label for="locationSearchInput">Ingresá tu dirección</label>
+      <input type="text" id="locationSearchInput" placeholder="Ej: Av. Rivadavia 1234, Buenos Aires" autocomplete="street-address">
+      <p class="location-help">Mientras escribís, buscamos la dirección y actualizamos el mapa automáticamente.</p>
+    </div>
+
+    <button type="button" class="btn btn-ghost btn-sm btn-block" id="useCurrentLocationBtn" style="margin-bottom: 12px;">
+      📍 Usar mi ubicación actual
+    </button>
+
+    <div id="locationSuggestions" class="location-suggestions"></div>
+    <div id="locationMap" class="location-map"></div>
+    <div class="location-selected" id="locationSelected">Todavía no seleccionaste una ubicación.</div>
+
+    <button class="btn btn-coral btn-block" id="confirmLocationBtn" style="margin-top: 16px;" disabled>Confirmar ubicación</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
