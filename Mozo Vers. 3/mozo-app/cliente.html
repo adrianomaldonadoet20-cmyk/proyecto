@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mozo — Portal Cliente</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  .page-hero {
+    background: var(--navy);
+    color: var(--white);
+    padding: 40px 0 56px;
+  }
+  .page-hero .eyebrow { color: var(--gold); }
+  .page-hero h1 { font-size: clamp(1.9rem, 4vw, 2.6rem); margin: 8px 0 8px; }
+  .page-hero p { color: #C7CFEF; max-width: 460px; }
+  .search-bar {
+    margin-top: 26px;
+    background: var(--white);
+    border-radius: 999px;
+    padding: 6px;
+    display: flex;
+    gap: 6px;
+    max-width: 520px;
+    box-shadow: var(--shadow-md);
+  }
+  .search-bar input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 10px 16px;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+  }
+  .search-bar input:focus { outline: none; }
+
+  .pref-field { margin-bottom: 16px; }
+  .pref-field > label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+  .pref-hint {
+    font-size: 0.74rem;
+    color: var(--ink-soft);
+    font-weight: 400;
+    display: block;
+    margin-top: 2px;
+  }
+  .pref-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pref-chip { position: relative; }
+  .pref-chip input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .pref-chip span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--cream);
+    border: 1.5px solid var(--line);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .pref-chip input:checked + span {
+    border-color: var(--coral);
+    color: var(--coral-dark);
+    background: #FFF1F1;
+  }
+  .pref-chip input:focus-visible + span {
+    outline: 2px solid var(--navy);
+    outline-offset: 2px;
+  }
+  .pref-punto-field {
+    display: none;
+  }
+  .pref-punto-field.show { display: block; }
+
+  .location-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.14);
+    border: 1.5px solid rgba(255,255,255,0.35);
+    color: var(--white);
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 20px;
+  }
+  .location-chip:hover { background: rgba(255,255,255,0.22); }
+  .location-chip .location-caret { opacity: 0.7; font-size: 0.75rem; margin-left: 2px; }
+
+  .location-suggestions {
+    max-height: 190px;
+    overflow-y: auto;
+    margin-bottom: 14px;
+  }
+  .location-suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    cursor: pointer;
+  }
+  .location-suggestion-item:hover, .location-suggestion-item.active { background: var(--cream); }
+  .location-suggestion-item .pin { font-size: 1rem; }
+  .location-suggestion-item .loc-name { font-weight: 600; color: var(--ink); }
+  .location-suggestion-item .loc-detail { color: var(--ink-soft); font-size: 0.78rem; }
+  .location-map {
+    height: 200px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1.5px solid var(--line);
+    background: var(--cream);
+  }
+  .field-error {
+    display: none;
+    color: var(--coral-dark);
+    font-size: 0.78rem;
+    margin: -10px 0 14px;
+  }
+
+  .filter-chip {
+    background: var(--white);
+    border: 1.5px solid var(--line);
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+    transition: all 0.15s ease;
+  }
+  .filter-chip.active, .filter-chip:hover { border-color: var(--coral); color: var(--coral-dark); background: #FFF1F1; }
+
+  .section-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .section-title h2 { font-size: 1.5rem; color: var(--navy); }
+  .section-title span { color: var(--ink-soft); font-size: 0.85rem; }
+
+  .place-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+    margin-bottom: 50px;
+  }
+  .place-card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  .place-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
+  .place-media {
+    height: 130px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.4rem;
+  }
+  .place-body { padding: 18px 20px 20px; flex: 1; display: flex; flex-direction: column; }
+  .place-cuisine { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--coral-dark); margin-bottom: 6px; }
+  .place-body h3 { font-size: 1.15rem; color: var(--navy); margin-bottom: 6px; }
+  .place-tip { font-size: 0.85rem; color: var(--ink-soft); margin-bottom: 16px; flex: 1; }
+  .place-meta { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: 0.8rem; color: var(--ink-soft); }
+  .place-actions { display: flex; gap: 8px; }
+  .place-actions .btn { flex: 1; }
+
+  .order-status-strip {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    padding: 20px 24px;
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 50px;
+  }
+  .order-status-strip h3 { font-size: 1.05rem; color: var(--navy); margin-bottom: 14px; }
+  .status-track { display: flex; align-items: center; gap: 0; }
+  .status-step { flex: 1; text-align: center; position: relative; }
+  .status-step .dot {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--line); color: var(--ink-soft);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px; font-weight: 700; font-size: 0.8rem;
+    transition: all 0.2s ease;
+  }
+  .status-step.done .dot { background: var(--success); color: var(--white); }
+  .status-step.active .dot { background: var(--coral); color: var(--white); }
+  .status-step p { font-size: 0.78rem; color: var(--ink-soft); }
+  .status-step::before {
+    content: '';
+    position: absolute;
+    top: 15px; left: -50%; width: 100%; height: 2px;
+    background: var(--line); z-index: -1;
+  }
+  .status-step:first-child::before { display: none; }
+  .status-step.done::before { background: var(--success); }
+
+  /* Menu picker inside modal */
+  .menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item-name { font-size: 0.92rem; font-weight: 500; }
+  .menu-item-price { font-size: 0.82rem; color: var(--ink-soft); }
+  .qty-control { display: flex; align-items: center; gap: 10px; }
+  .qty-control button {
+    width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--line);
+    background: var(--white); font-weight: 700; color: var(--navy);
+  }
+  .qty-control span { min-width: 14px; text-align: center; font-weight: 600; }
+
+  .modal-total {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; font-weight: 700; color: var(--navy); font-size: 1.05rem;
+  }
+
+  @media (max-width: 900px) {
+    .place-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 620px) {
+    .place-grid { grid-template-columns: 1fr; }
+    .status-track { flex-wrap: wrap; row-gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="topnav-inner">
+    <div class="nav-left">
+      <div class="profile-menu" id="profileMenu">
+        <button type="button" class="profile-btn" id="profileBtn" aria-haspopup="true" aria-expanded="false" aria-label="Mi perfil" title="Mi perfil">👤</button>
+        <div class="profile-dropdown" id="profileDropdown">
+          <div class="profile-dropdown-head">
+            <span class="profile-dropdown-header">MIS DATOS</span>
+            <button type="button" class="profile-edit-btn" id="profileEditBtn" aria-label="Editar mis datos" title="Editar mis datos" style="display:none;">⚙️</button>
+          </div>
+          <div class="profile-dropdown-body" id="profileDropdownBody">
+            <p class="profile-empty">Todavía no iniciaste sesión.</p>
+            <button type="button" class="btn btn-navy btn-sm btn-block" id="profileLoginBtn">Iniciar sesión</button>
+          </div>
+        </div>
+      </div>
+      <a href="index.html" class="brand">Mozo<span class="dot">.</span></a>
+    </div>
+    <div class="nav-right">
+      <span class="role-badge cliente">Cliente</span>
+      <button type="button" class="reservation-access-btn" id="reservationAccessBtn" aria-label="Ver mi código de reserva" title="Mi código de reserva" style="display:none;">🎟️</button>
+      <div class="nav-menu" id="navMenu">
+        <button type="button" class="nav-menu-btn" id="navMenuBtn" aria-haspopup="true" aria-expanded="false" aria-label="Más opciones">⋮</button>
+        <div class="nav-menu-dropdown" id="navMenuDropdown">
+          <a href="#" id="soyLocalBtn">🍽️ Soy un local</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<header class="page-hero">
+  <div class="container">
+    <div class="eyebrow">HOLA, COMO ESTÁS</div>
+    <h1>¿Dónde comemos hoy?</h1>
+    <p>Locales recomendados cerca tuyo. Reservá tu mesa o pedí para llevar, todo desde acá.</p>
+    <button type="button" class="location-chip" id="locationBtn">
+      <span>📍</span>
+      <span id="locationLabel">Elegí tu ubicación de entrega</span>
+      <span class="location-caret">▾</span>
+    </button>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Buscar por local o tipo de cocina...">
+      <button class="btn btn-coral" id="searchBtn">Buscar</button>
+    </div>
+  </div>
+</header>
+
+<main class="container" style="padding-top: 40px;">
+
+  <div class="filters-panel">
+    <button type="button" class="filters-header" id="filtersToggle" aria-expanded="false" aria-controls="filtersChips">
+      <span class="filters-hamburger"><span></span><span></span><span></span></span>
+      <span class="filters-label">Filtros</span>
+    </button>
+    <div class="filters collapsed" id="filtersChips">
+      <button class="filter-chip active">Todos</button>
+      <button class="filter-chip">Cerca mío</button>
+      <button class="filter-chip">Para comer ahí</button>
+      <button class="filter-chip">Para llevar</button>
+      <button class="filter-chip">Mejor puntuados</button>
+    </div>
+  </div>
+
+  <div class="order-status-strip">
+    <h3>Tu último pedido — La Parrilla del Barrio</h3>
+    <div class="status-track">
+      <div class="status-step done"><div class="dot">✓</div><p>Confirmado</p></div>
+      <div class="status-step active"><div class="dot">2</div><p>En preparación</p></div>
+      <div class="status-step"><div class="dot">3</div><p>Listo</p></div>
+      <div class="status-step"><div class="dot">4</div><p>Entregado</p></div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>Recomendados para vos</h2>
+    <span id="place-count">5 locales</span>
+  </div>
+
+  <div class="place-grid" id="place-grid"></div>
+</main>
+
+<!-- Modal: reservar / pedir -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal">
+    <button class="modal-close" id="modalClose">✕</button>
+    <div class="eyebrow" style="color: var(--coral-dark);">NUEVO PEDIDO</div>
+    <h3 id="modalPlaceName" style="color: var(--navy); font-size: 1.4rem; margin: 6px 0 20px;">Local</h3>
+
+    <div class="field">
+      <label>Modalidad</label>
+      <div class="toggle-group" id="modalityToggle">
+        <button type="button" class="active" data-mode="dine">Comer en el local</button>
+        <button type="button" data-mode="takeout">Para llevar</button>
+      </div>
+    </div>
+
+    <div class="field" id="dateTimeField">
+      <label id="dateTimeLabel">Horario de llegada</label>
+      <input type="time" id="timeInput" value="21:00">
+    </div>
+
+    <div class="field" id="guestsField">
+      <label>Personas</label>
+      <select id="guestsInput">
+        <option>1 persona</option>
+        <option selected>2 personas</option>
+        <option>3 personas</option>
+        <option>4 personas</option>
+        <option>5+ personas</option>
+      </select>
+    </div>
+    <div class="field" id="tableField">
+      <label>Mesa disponible</label>
+      <select id="tableInput">
+        <option value="">Seleccioná una mesa</option>
+      </select>
+      <p class="field-hint" id="tableAvailabilityHint">Solo se muestran mesas libres.</p>
+    </div>
+
+    <div class="field">
+      <label>Elegí qué vas a comer (opcional, podés pedir al llegar)</label>
+      <div id="menuList"></div>
+    </div>
+
+    <div class="ticket-tear"></div>
+    <div class="modal-total">
+      <span>Total estimado</span>
+      <span id="modalTotal">$0</span>
+    </div>
+
+    <button class="btn btn-coral btn-block" id="confirmOrder">Confirmar</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="reservationCodeModal">
+  <div class="modal reservation-code-modal" style="max-width: 430px; text-align: center;">
+    <button class="modal-close" id="reservationCodeClose">✕</button>
+    <div class="eyebrow" style="color: var(--success);">RESERVA CONFIRMADA</div>
+    <h3 style="color: var(--navy); font-size: 1.6rem; margin: 8px 0 10px;">Tu mesa está reservada</h3>
+    <p style="color: var(--ink-soft); margin-bottom: 18px;">Mostrá este código en el local cuando llegues.</p>
+    <div class="reservation-code" id="reservationCodeValue">MZ-XXXXXX</div>
+    <div class="reservation-summary" id="reservationSummary"></div>
+    <button class="btn btn-navy btn-block" id="reservationCodeCloseBtn">Listo</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="savedReservationModal">
+  <div class="modal reservation-code-modal" style="max-width: 380px; text-align: center;">
+    <button class="modal-close" id="savedReservationClose">✕</button>
+    <div class="eyebrow" style="color: var(--success);">MI RESERVA</div>
+    <h3 style="color: var(--navy); font-size: 1.45rem; margin: 6px 0 10px;">Código para ingresar</h3>
+    <p style="color: var(--ink-soft); margin-bottom: 18px;">Mostrá este código al llegar al local.</p>
+    <div class="reservation-code" id="savedReservationCode">-</div>
+    <div class="reservation-summary" id="savedReservationSummary"></div>
+    <button class="btn btn-navy btn-block" id="savedReservationCloseBtn">Cerrar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">Pedido confirmado ✓</div>
+
+<!-- Modal: iniciar sesión -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal" style="max-width: 400px;">
+    <button class="modal-close" id="loginModalClose">✕</button>
+    <div class="eyebrow" style="color: var(--navy);">INICIAR SESIÓN</div>
+    <h3 style="color: var(--navy); font-size: 1.3rem; margin: 6px 0 20px;">Ingresá a tu cuenta</h3>
+
+    <div class="field">
+      <label for="loginNameInput">Nombre</label>
+      <input type="text" id="loginNameInput" placeholder="Tu nombre" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="loginDniInput">DNI</label>
+      <input type="text" id="loginDniInput" placeholder="Sin puntos" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="loginAddressInput">Dirección</label>
+      <input type="text" id="loginAddressInput" placeholder="Ej: Av. Santa Fe 3253, Palermo" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="loginPasswordInput">Contraseña</label>
+      <input type="password" id="loginPasswordInput" placeholder="••••••" autocomplete="off">
+    </div>
+    <p class="field-error" id="loginError">Completá todos los campos.</p>
+
+    <button class="btn btn-navy btn-block" id="loginSubmitBtn">Ingresar</button>
+
+    <div style="text-align: center; margin-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+      <a href="#" id="forgotPasswordBtn" style="font-size: 0.82rem; color: var(--ink-soft); border-bottom: 1px dashed var(--ink-soft); align-self: center;">¿Olvidaste tu contraseña?</a>
+      <a href="#" id="goToRegisterBtn" style="font-size: 0.82rem; color: var(--coral-dark); align-self: center;">¿No tenés cuenta? Registrate</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: registrarme -->
+<div class="modal-overlay" id="registerModal">
+  <div class="modal" style="max-width: 400px;">
+    <button class="modal-close" id="registerModalClose">✕</button>
+    <div class="eyebrow" style="color: var(--coral-dark);">CREAR CUENTA</div>
+    <h3 style="color: var(--navy); font-size: 1.3rem; margin: 6px 0 20px;">Registrate en Mozo</h3>
+
+    <div class="field">
+      <label for="registerEmailInput">Correo de Gmail</label>
+      <input type="email" id="registerEmailInput" placeholder="tuusuario@gmail.com" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="registerNameInput">Nombre</label>
+      <input type="text" id="registerNameInput" placeholder="Tu nombre" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="registerDniInput">DNI</label>
+      <input type="text" id="registerDniInput" placeholder="Sin puntos" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="registerAddressInput">Dirección</label>
+      <input type="text" id="registerAddressInput" placeholder="Ej: Av. Santa Fe 3253, Palermo" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="registerPasswordInput">Contraseña</label>
+      <input type="password" id="registerPasswordInput" placeholder="••••••" autocomplete="off">
+    </div>
+
+    <div class="field pref-field">
+      <label>¿Qué te gusta comer?<span class="pref-hint">Elegí todas las opciones que quieras</span></label>
+      <div class="pref-chips" id="registerFoodPrefs">
+        <label class="pref-chip"><input type="checkbox" value="pollo">    <span>🍗 Pollo</span></label>
+        <label class="pref-chip"><input type="checkbox" value="carne" id="prefCarneCheck"><span>🥩 Carne</span></label>
+        <label class="pref-chip"><input type="checkbox" value="pescado"><span>🐟 Pescado</span></label>
+        <label class="pref-chip"><input type="checkbox" value="mariscos"><span>🦐 Mariscos</span></label>
+        <label class="pref-chip"><input type="checkbox" value="pastas"><span>🍝 Pastas</span></label>
+        <label class="pref-chip"><input type="checkbox" value="ensaladas"><span>🥗 Ensaladas</span></label>
+        <label class="pref-chip"><input type="checkbox" value="frituras"><span>🍟 Frituras</span></label>
+        <label class="pref-chip"><input type="checkbox" value="picante"><span>🌶️ Picante</span></label>
+        <label class="pref-chip"><input type="checkbox" value="vegetariano"><span>🥦 Vegetariano</span></label>
+        <label class="pref-chip"><input type="checkbox" value="vegano"><span>🌱 Vegano</span></label>
+        <label class="pref-chip"><input type="checkbox" value="sin_tacc"><span>🌾 Sin TACC</span></label>
+        <label class="pref-chip"><input type="checkbox" value="postres"><span>🍰 Postres / dulce</span></label>
+      </div>
+    </div>
+
+    <div class="field pref-punto-field" id="pointFieldWrap">
+      <label for="registerCarnePuntoInput">¿Cómo te gusta el punto de la carne?</label>
+      <select id="registerCarnePuntoInput">
+        <option value="">Sin preferencia</option>
+        <option value="jugosa">Jugosa</option>
+        <option value="a_punto">A punto</option>
+        <option value="bien_cocida">Bien cocida</option>
+      </select>
+    </div>
+
+    <p class="field-error" id="registerError">Revisá los datos ingresados.</p>
+
+    <button class="btn btn-coral btn-block" id="registerSubmitBtn">Crear cuenta</button>
+
+    <div style="text-align: center; margin-top: 16px;">
+      <a href="#" id="goToLoginBtn" style="font-size: 0.82rem; color: var(--navy); border-bottom: 1px dashed var(--navy);">¿Ya tenés cuenta? Iniciá sesión</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: editar mis datos -->
+<div class="modal-overlay" id="editProfileModal">
+  <div class="modal" style="max-width: 400px;">
+    <button class="modal-close" id="editProfileClose">✕</button>
+    <div class="eyebrow" style="color: var(--navy);">MIS DATOS</div>
+    <h3 style="color: var(--navy); font-size: 1.3rem; margin: 6px 0 20px;">Editar mis datos</h3>
+
+    <div class="field">
+      <label for="editNameInput">Nombre</label>
+      <input type="text" id="editNameInput" placeholder="Tu nombre" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="editDniInput">DNI</label>
+      <input type="text" id="editDniInput" placeholder="Sin puntos" inputmode="numeric" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="editAddressInput">Dirección</label>
+      <input type="text" id="editAddressInput" placeholder="Ej: Av. Santa Fe 3253, Palermo" autocomplete="off">
+    </div>
+    <p class="field-error" id="editProfileError">Completá todos los campos.</p>
+
+    <button class="btn btn-navy btn-block" id="editProfileSubmit">Guardar cambios</button>
+  </div>
+</div>
+
+<!-- Modal: olvidé mi contraseña -->
+<div class="modal-overlay" id="forgotPasswordModal">
+  <div class="modal" style="max-width: 380px;">
+    <button class="modal-close" id="forgotModalClose">✕</button>
+    <div class="eyebrow" style="color: var(--navy);">RECUPERAR CONTRASEÑA</div>
+    <h3 style="color: var(--navy); font-size: 1.25rem; margin: 6px 0 18px;">Te enviamos un código</h3>
+    <div class="field">
+      <label for="forgotEmailInput">Mail con el que te registraste</label>
+      <input type="email" id="forgotEmailInput" placeholder="tuusuario@gmail.com" autocomplete="off">
+    </div>
+    <p class="field-error" id="forgotError">Ingresá un mail válido.</p>
+    <button class="btn btn-navy btn-block" id="forgotSubmitBtn">Enviar código</button>
+  </div>
+</div>
+
+<!-- Modal: ubicación de entrega -->
+<div class="modal-overlay" id="locationModal">
+  <div class="modal" style="max-width: 480px;">
+    <button class="modal-close" id="locationModalClose">✕</button>
+    <div class="eyebrow" style="color: var(--coral-dark);">UBICACIÓN DE ENTREGA</div>
+    <h3 style="color: var(--navy); font-size: 1.3rem; margin: 6px 0 18px;">¿Dónde te encontrás?</h3>
+
+    <div class="field" style="margin-bottom: 10px;">
+      <label for="locationSearchInput">Buscá tu dirección o barrio</label>
+      <input type="text" id="locationSearchInput" placeholder="Ej: Av. Santa Fe 3253, Palermo..." autocomplete="off">
+    </div>
+
+    <button type="button" class="btn btn-ghost btn-sm btn-block" id="useCurrentLocationBtn" style="margin-bottom: 12px;">📍 Usar mi ubicación actual</button>
+
+    <div id="locationSuggestions" class="location-suggestions"></div>
+    <div id="locationMap" class="location-map"></div>
+
+    <button class="btn btn-coral btn-block" id="confirmLocationBtn" style="margin-top: 16px;" disabled>Confirmar ubicación</button>
+  </div>
+</div>
+
+<!-- Modal: acceso admin (usuario y contraseña) -->
+<div class="modal-overlay" id="adminLoginModal">
+  <div class="modal" style="max-width: 360px;">
+    <button class="modal-close" id="adminLoginClose">✕</button>
+    <div class="eyebrow" style="color: var(--navy);">ACCESO ADMIN</div>
+    <h3 style="color: var(--navy); font-size: 1.3rem; margin: 6px 0 20px;">Ingresá para entrar como local</h3>
+
+    <div class="field">
+      <label for="adminUserInput">Usuario</label>
+      <input type="text" id="adminUserInput" placeholder="admin" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="adminPassInput">Contraseña</label>
+      <input type="password" id="adminPassInput" placeholder="••••" autocomplete="off">
+    </div>
+    <p class="field-error" id="adminLoginError">Usuario o contraseña incorrectos.</p>
+
+    <button class="btn btn-navy btn-block" id="adminLoginSubmit">Entrar</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
